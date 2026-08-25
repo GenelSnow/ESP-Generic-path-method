@@ -94,6 +94,8 @@ optionsFrame.Size = UDim2.new(1, 0, 0, 30)
 optionsFrame.Position = UDim2.new(0, 0, 0, 82)
 optionsFrame.BackgroundTransparency = 1
 optionsFrame.Parent = content
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 local function makeToggle(text, posX, default)
 	local btn = Instance.new("TextButton")
@@ -189,7 +191,9 @@ local function clearESPData(data)
 	data.texts = {}
 end
 
-local function createIndividualEntry(parentScroll, obj, parentGroup)
+-- ========== ENTRY INDIVIDUAL ==========
+local function createIndividualEntry(parent, obj, depth)
+	depth = depth or 0
 	local path = getFullPath(obj)
 	local displayName = obj.Name
 
@@ -199,22 +203,21 @@ local function createIndividualEntry(parentScroll, obj, parentGroup)
 		enabled = true,
 		highlights = {},
 		lines = {},
-		texts = {},
-		isIndividual = true,
-		parentGroup = parentGroup
+		texts = {}
 	}
 
 	local entry = Instance.new("Frame")
-	entry.Size = UDim2.new(1, -10, 0, 42)
+	entry.Name = "Entry_" .. displayName
+	entry.Size = UDim2.new(1, -6, 0, 38)
 	entry.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	entry.Parent = parentScroll
-	Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
+	entry.Parent = parent
+	Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 5)
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -130, 1, 0)
-	label.Position = UDim2.new(0, 10, 0, 0)
+	label.Size = UDim2.new(1, -115, 1, 0)
+	label.Position = UDim2.new(0, 8 + depth * 16, 0, 0)
 	label.BackgroundTransparency = 1
-	label.Text = "    └ " .. displayName
+	label.Text = string.rep("  ", depth) .. "└ " .. displayName
 	label.TextColor3 = Color3.fromRGB(220, 220, 220)
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextScaled = true
@@ -222,20 +225,20 @@ local function createIndividualEntry(parentScroll, obj, parentGroup)
 	label.Parent = entry
 
 	local toggleBtn = Instance.new("TextButton")
-	toggleBtn.Size = UDim2.new(0, 50, 0, 26)
-	toggleBtn.Position = UDim2.new(1, -115, 0.5, -13)
+	toggleBtn.Size = UDim2.new(0, 46, 0, 24)
+	toggleBtn.Position = UDim2.new(1, -108, 0.5, -12)
 	toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 	toggleBtn.Text = "ON"
-	toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+	toggleBtn.TextColor3 = Color3.new(1,1,1)
 	toggleBtn.TextScaled = true
 	toggleBtn.Parent = entry
 
 	local removeBtn = Instance.new("TextButton")
-	removeBtn.Size = UDim2.new(0, 50, 0, 26)
-	removeBtn.Position = UDim2.new(1, -60, 0.5, -13)
+	removeBtn.Size = UDim2.new(0, 46, 0, 24)
+	removeBtn.Position = UDim2.new(1, -58, 0.5, -12)
 	removeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 	removeBtn.Text = "Del"
-	removeBtn.TextColor3 = Color3.new(1, 1, 1)
+	removeBtn.TextColor3 = Color3.new(1,1,1)
 	removeBtn.TextScaled = true
 	removeBtn.Parent = entry
 
@@ -243,38 +246,39 @@ local function createIndividualEntry(parentScroll, obj, parentGroup)
 		espData.enabled = not espData.enabled
 		toggleBtn.Text = espData.enabled and "ON" or "OFF"
 		toggleBtn.BackgroundColor3 = espData.enabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(70, 70, 70)
-		if not espData.enabled then
-			clearESPData(espData)
-		end
+		if not espData.enabled then clearESPData(espData) end
 	end)
 
 	removeBtn.MouseButton1Click:Connect(function()
 		clearESPData(espData)
 		entry:Destroy()
 		activeESPs[path] = nil
+		task.defer(function()
+			scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+		end)
 	end)
 
 	activeESPs[path] = espData
-	return espData
+	return entry
 end
 
--- ========== CREAR GRUPO (Carpeta / Modelo) ==========
-local function createGroupEntry(pathStr, target)
+-- ========== GRUPO (plano + indentación) ==========
+local function createGroupEntry(parent, target, depth)
+	depth = depth or 0
 	local displayName = target.Name
-	local isContainer = target:IsA("Folder") or target:IsA("Model") or target:IsA("Configuration")
 
-	-- Entry del grupo
 	local groupFrame = Instance.new("Frame")
-	groupFrame.Size = UDim2.new(1, 0, 0, 52)
-	groupFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-	groupFrame.Parent = scroll
-	Instance.new("UICorner", groupFrame).CornerRadius = UDim.new(0, 8)
+	groupFrame.Name = "Group_" .. displayName
+	groupFrame.Size = UDim2.new(1, -6, 0, 42)
+	groupFrame.BackgroundColor3 = Color3.fromRGB(25 + depth * 8, 25 + depth * 8, 25 + depth * 8)
+	groupFrame.Parent = parent
+	Instance.new("UICorner", groupFrame).CornerRadius = UDim.new(0, 6)
 
 	local groupLabel = Instance.new("TextLabel")
-	groupLabel.Size = UDim2.new(1, -160, 1, 0)
-	groupLabel.Position = UDim2.new(0, 10, 0, 0)
+	groupLabel.Size = UDim2.new(1, -130, 1, 0)
+	groupLabel.Position = UDim2.new(0, 8 + depth * 16, 0, 0)
 	groupLabel.BackgroundTransparency = 1
-	groupLabel.Text = (isContainer and "📦 " or "🔹 ") .. displayName
+	groupLabel.Text = string.rep("  ", depth) .. "📦 " .. displayName
 	groupLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
 	groupLabel.TextXAlignment = Enum.TextXAlignment.Left
 	groupLabel.TextScaled = true
@@ -282,65 +286,74 @@ local function createGroupEntry(pathStr, target)
 	groupLabel.Parent = groupFrame
 
 	local expandBtn = Instance.new("TextButton")
-	expandBtn.Size = UDim2.new(0, 60, 0, 28)
-	expandBtn.Position = UDim2.new(1, -140, 0.5, -14)
+	expandBtn.Size = UDim2.new(0, 52, 0, 26)
+	expandBtn.Position = UDim2.new(1, -118, 0.5, -13)
 	expandBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
 	expandBtn.Text = "Abrir"
-	expandBtn.TextColor3 = Color3.new(1, 1, 1)
+	expandBtn.TextColor3 = Color3.new(1,1,1)
 	expandBtn.TextScaled = true
 	expandBtn.Parent = groupFrame
 
 	local removeGroupBtn = Instance.new("TextButton")
-	removeGroupBtn.Size = UDim2.new(0, 60, 0, 28)
-	removeGroupBtn.Position = UDim2.new(1, -70, 0.5, -14)
+	removeGroupBtn.Size = UDim2.new(0, 52, 0, 26)
+	removeGroupBtn.Position = UDim2.new(1, -62, 0.5, -13)
 	removeGroupBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 	removeGroupBtn.Text = "Del"
-	removeGroupBtn.TextColor3 = Color3.new(1, 1, 1)
+	removeGroupBtn.TextColor3 = Color3.new(1,1,1)
 	removeGroupBtn.TextScaled = true
 	removeGroupBtn.Parent = groupFrame
 
-	-- Contenedor de hijos (oculto por defecto)
-	local childrenFrame = Instance.new("Frame")
-	childrenFrame.Size = UDim2.new(1, 0, 0, 0)
-	childrenFrame.BackgroundTransparency = 1
-	childrenFrame.Visible = false
-	childrenFrame.Parent = scroll
-
-	local childrenLayout = Instance.new("UIListLayout")
-	childrenLayout.Padding = UDim.new(0, 3)
-	childrenLayout.Parent = childrenFrame
-
+	local childFrames = {}
 	local expanded = false
-	local childEntries = {}
 
 	expandBtn.MouseButton1Click:Connect(function()
 		expanded = not expanded
-		childrenFrame.Visible = expanded
 		expandBtn.Text = expanded and "Cerrar" or "Abrir"
 
-		if expanded and #childEntries == 0 then
-			-- Crear los hijos solo la primera vez que se abre
-			for _, child in ipairs(target:GetDescendants()) do
-				if child:IsA("BasePart") then
-					local data = createIndividualEntry(childrenFrame, child, pathStr)
-					table.insert(childEntries, data)
+		if expanded then
+			if #childFrames == 0 then
+				for _, child in ipairs(target:GetChildren()) do
+					if child:IsA("BasePart") then
+						local frame = createIndividualEntry(parent, child, depth + 1)
+						table.insert(childFrames, frame)
+					elseif child:IsA("Model") or child:IsA("Folder") then
+						local hasParts = false
+						for _, d in ipairs(child:GetDescendants()) do
+							if d:IsA("BasePart") then hasParts = true break end
+						end
+						if hasParts then
+							local frame = createGroupEntry(parent, child, depth + 1)
+							table.insert(childFrames, frame)
+						end
+					end
 				end
+			else
+				for _, frame in ipairs(childFrames) do
+					frame.Visible = true
+				end
+			end
+		else
+			for _, frame in ipairs(childFrames) do
+				frame.Visible = false
 			end
 		end
 
-		-- Actualizar tamaño del canvas
-		task.wait()
-		scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+		task.defer(function()
+			scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 25)
+		end)
 	end)
 
 	removeGroupBtn.MouseButton1Click:Connect(function()
-		for _, data in pairs(childEntries) do
-			clearESPData(data)
-			activeESPs[data.path] = nil
+		for _, frame in ipairs(childFrames) do
+			frame:Destroy()
 		end
 		groupFrame:Destroy()
-		childrenFrame:Destroy()
+		task.defer(function()
+			scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 25)
+		end)
 	end)
+
+	return groupFrame
 end
 
 -- Actualización (mucho más eficiente)
@@ -417,7 +430,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- ========== FUNCIÓN PRINCIPAL DE AGREGAR ==========
+-- ========== CREATE ESP ==========
 local function createESP(pathStr)
 	local target = getObjectFromPath(pathStr)
 	if not target then
@@ -425,18 +438,19 @@ local function createESP(pathStr)
 		return
 	end
 
-	local isContainer = target:IsA("Folder") or target:IsA("Model") or #target:GetChildren() > 3
+	local isContainer = target:IsA("Folder") or target:IsA("Model") or #target:GetChildren() > 2
 
 	if isContainer then
-		createGroupEntry(pathStr, target)
+		createGroupEntry(scroll, target, 0)
 		print("✅ Grupo agregado:", target.Name)
 	else
-		-- Objeto individual
-		createIndividualEntry(scroll, target, nil)
+		createIndividualEntry(scroll, target, 0)
 		print("✅ Objeto agregado:", target.Name)
 	end
 
-	scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+	task.defer(function()
+		scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 25)
+	end)
 end
 
 -- Botón Agregar (actualizado)
