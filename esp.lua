@@ -177,18 +177,43 @@ local function getObjectFromPath(pathStr)
 end
 
 local function clearESPData(data)
-	for _, h in pairs(data.highlights or {}) do
-		if h and h.Parent then h:Destroy() end
+	if not data then return end
+
+	-- Highlights
+	if data.highlights then
+		for _, h in pairs(data.highlights) do
+			pcall(function()
+				if h and h.Parent then
+					h:Destroy()
+				end
+			end)
+		end
+		data.highlights = {}
 	end
-	for _, l in pairs(data.lines or {}) do
-		if l then l:Remove() end
+
+	-- Líneas (Drawing)
+	if data.lines then
+		for _, l in pairs(data.lines) do
+			pcall(function()
+				if l then
+					l:Remove()
+				end
+			end)
+		end
+		data.lines = {}
 	end
-	for _, t in pairs(data.texts or {}) do
-		if t then t:Remove() end
+
+	-- Textos de distancia
+	if data.texts then
+		for _, t in pairs(data.texts) do
+			pcall(function()
+				if t then
+					t:Remove()
+				end
+			end)
+		end
+		data.texts = {}
 	end
-	data.highlights = {}
-	data.lines = {}
-	data.texts = {}
 end
 
 -- ========== ENTRY INDIVIDUAL ==========
@@ -357,7 +382,8 @@ local function createGroupEntry(parent, target, depth)
 end
 
 -- Actualización (mucho más eficiente)
-RunService.RenderStepped:Connect(function()
+local connection
+connection = RunService.RenderStepped:Connect(function()
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
@@ -367,7 +393,7 @@ RunService.RenderStepped:Connect(function()
 	local showDist = getDist()
 
 	for path, data in pairs(activeESPs) do
-		-- Ahora usamos data.object (no data.target)
+		-- Si está desactivado o el objeto ya no existe → limpiar y saltar
 		if not data.enabled or not data.object or not data.object.Parent then
 			clearESPData(data)
 			continue
@@ -385,7 +411,7 @@ RunService.RenderStepped:Connect(function()
 			continue
 		end
 
-		-- Limpiar dibujos anteriores
+		-- Limpiar lo anterior de este objeto
 		clearESPData(data)
 
 		-- Highlight
@@ -475,10 +501,21 @@ minimizeBtn.MouseButton1Click:Connect(function()
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
-	for _, data in pairs(activeESPs) do
+	-- Desconectar el loop
+	if connection then
+		connection:Disconnect()
+		connection = nil
+	end
+
+	-- Limpiar todos los ESP
+	for path, data in pairs(activeESPs) do
 		clearESPData(data)
 	end
+	activeESPs = {}
+
+	-- Destruir la GUI
 	gui:Destroy()
+	print("🛑 ESP cerrado y todo limpiado")
 end)
 
 print("✅ Generic ESP Hub v2 cargado")
